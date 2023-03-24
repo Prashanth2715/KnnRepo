@@ -1,0 +1,116 @@
+---
+title: "BANL6625- Mid Exam"
+author: "Prashanth"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+setwd("D:/Data Mining")
+my_data=read.csv("my_data.csv")
+my_data_df=my_data[,c(1,2,3,4,5,6)]
+summary(my_data_df)
+sum(is.na(my_data_df))
+
+#removing NA's from the dataset
+
+clean_data=na.omit(my_data_df)
+sum(is.na(clean_data))
+
+#Binning the age into age_groups
+clean_data$age_group=cut(clean_data$age,breaks = c(0,10,30,50,100),labels = c("baby","young","Adult","Old"))
+summary(clean_data)
+
+```
+
+## Box plot and Scatter plot
+
+```{r}
+
+clean_data$location=as.factor(clean_data$location)
+clean_data$soap_type=as.factor(clean_data$soap_type)
+clean_data$payment_type=as.factor(clean_data$payment_type)
+
+boxpl1=ggplot(data=clean_data,aes(x=soap_type,y=quantity))+geom_boxplot()
+boxpl2=ggplot(data=clean_data,aes(x=payment_type,y=quantity))+geom_boxplot()
+Scatter1=ggplot(data=clean_data,aes(x=age_group,y=quantity,col=soap_type))+geom_point()
+Scatter2=ggplot(data=clean_data,aes(x=age_group,y=quantity,col=location))+geom_point()
+boxpl1
+boxpl2
+Scatter1
+Scatter2
+```
+
+
+```{r}
+table(clean_data$soap_type)
+table(clean_data$location)
+table(clean_data$payment_type)
+```
+
+As we can see from the values in soap_type single,in location rural, and in payment_type credit card dominates the dataset.
+
+
+```{r}
+ggplot(clean_data, aes(x=location, fill=soap_type)) + 
+  geom_bar(position="stack") + 
+  labs(title="Soap Types by Region", x="Region", y="Frequency") + 
+  scale_fill_discrete(name="Soap Type")
+
+```
+
+As we can see from the plot there are different type of soaps used in different locations. 
+
+In Rural Region - Single soap type is used
+
+In Suburban Region - twin soap type is used
+
+In Urban Region - Liquid soap type is used
+
+
+```{r}
+ggplot(clean_data, aes(x=location, y=age, fill=payment_type)) +
+  geom_boxplot() +
+  ggtitle("Payment Type by Location and Age")
+
+```
+
+As we can see from the boxplot, different age people from different location choose different type of payment method
+
+```{r}
+library(class)
+library(caret)
+clean_data$location=as.numeric(as.factor(clean_data$location))
+clean_data$payment_type=as.numeric(as.factor(clean_data$payment_type))
+
+#Removed customer column for prediction of data
+clean_data_sub=subset(clean_data,select=c("soap_type","location","quantity","age","payment_type"))
+
+#divided the data into 70:30 of train and test dataset
+train_index <- sample(row.names(clean_data_sub), 0.7*dim(clean_data_sub)[1])  
+valid_index <- setdiff(row.names(clean_data_sub), train_index)  
+train_df <- clean_data_sub[train_index, ]
+valid_df <- clean_data_sub[valid_index, ]
+train_norm_df=train_df
+valid_norm_df=valid_df
+#Standardizing the data
+norm_values <- preProcess(train_df[, c(2,3,4)], method=c("center", "scale"))
+train_norm_df[, c(2,3,4)] <- predict(norm_values, train_df[, c(2,3,4)])
+valid_norm_df[, c(2,3,4)] <- predict(norm_values, valid_df[, c(2,3,4)])
+
+new_data=data.frame(location="urban",quantity=3,age=55,payment_type="credit card")
+new_data$location=as.numeric(as.factor(new_data$location))
+new_data$payment_type=as.numeric(as.factor(new_data$payment_type))
+new_data_norm=predict(norm_values,new_data)
+
+predict_soap_type=knn(train=train_norm_df[,c(2,3,4,5)],test=new_data_norm,cl=train_norm_df$soap_type,k=67)
+predict_soap_type
+```
+
+
+The predicted soap_type for a person living in urban region, age of 55, quantity is 3 and payment type is credit card is "Single"
+
